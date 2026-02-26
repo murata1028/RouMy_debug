@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RouMy Debug Tool v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0e14;
+    --surface: #12171f;
+    --surface2: #1a2030;
+    --surface3: #222a3a;
+    --border: #2a3345;
+    --text: #d4dae5;
+    --text2: #7a859a;
+    --text3: #505a70;
+    --green: #3ddc84;
+    --green-bg: rgba(61,220,132,0.08);
+    --red: #ff5a5a;
+    --red-bg: rgba(255,90,90,0.08);
+    --yellow: #ffc857;
+    --yellow-bg: rgba(255,200,87,0.08);
+    --blue: #5c9eff;
+    --blue-bg: rgba(92,158,255,0.08);
+    --purple: #b48eff;
+    --purple-bg: rgba(180,142,255,0.08);
+    --orange: #ff9e64;
+    --orange-bg: rgba(255,158,100,0.08);
+    --accent: #00c896;
+    --accent-dim: rgba(0,200,150,0.15);
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Noto Sans JP', -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(180deg, var(--bg) 0%, rgba(10,14,20,0.95) 100%);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 18px;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .header h1 span { color: var(--accent); }
+  .header-ver {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ── Main ── */
+  .main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .section-head {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .section-head:hover { background: var(--surface2); }
+  .section-head .icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .section-head h2 { font-size: 14px; font-weight: 600; flex: 1; }
+  .section-head .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .section-head .arrow {
+    color: var(--text3);
+    transition: transform 0.2s;
+    font-size: 12px;
+  }
+  .section.open .section-head .arrow { transform: rotate(90deg); }
+  .section-body {
+    display: none;
+    padding: 0 18px 18px;
+  }
+  .section.open .section-body { display: block; }
+
+  /* ── Badge colors ── */
+  .badge-ok   { background: var(--green-bg); color: var(--green); }
+  .badge-warn { background: var(--yellow-bg); color: var(--yellow); }
+  .badge-err  { background: var(--red-bg); color: var(--red); }
+  .badge-info { background: var(--blue-bg); color: var(--blue); }
+
+  /* ── Result rows ── */
+  .result-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(42,51,69,0.5);
+    font-size: 13px;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .status {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .result-row .label { color: var(--text2); min-width: 140px; flex-shrink: 0; }
+  .result-row .value { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+
+  .status-ok   { background: var(--green-bg); color: var(--green); }
+  .status-warn { background: var(--yellow-bg); color: var(--yellow); }
+  .status-err  { background: var(--red-bg); color: var(--red); }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--surface3); border-color: var(--accent); }
+  .btn-accent {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-accent:hover { background: rgba(0,200,150,0.25); }
+
+  /* ── File upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-zone .uz-text { font-size: 13px; color: var(--text2); }
+  .upload-zone .uz-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ── Log area ── */
+  .log-area {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+  }
+  .log-area::-webkit-scrollbar { width: 6px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-line { padding: 1px 0; }
+  .log-ok   { color: var(--green); }
+  .log-warn { color: var(--yellow); }
+  .log-err  { color: var(--red); }
+  .log-info { color: var(--blue); }
+  .log-dim  { color: var(--text3); }
+
+  /* ── Checklist ── */
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: var(--surface2);
+    font-size: 13px;
+    transition: background 0.15s;
+  }
+  .checklist-item:hover { background: var(--surface3); }
+  .cl-check {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-top: 1px;
+  }
+  .cl-check.done { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .cl-check.pending { background: var(--yellow-bg); border-color: var(--yellow); color: var(--yellow); }
+  .cl-body { flex: 1; }
+  .cl-title { font-weight: 500; margin-bottom: 2px; }
+  .cl-desc { font-size: 11.5px; color: var(--text2); line-height: 1.5; }
+  .cl-code {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg);
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-top: 6px;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--orange);
+  }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    flex: 1;
+    min-width: 140px;
+    text-align: center;
+  }
+  .summary-card .sc-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .summary-card .sc-label {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .main { padding: 16px 12px 60px; }
+    .result-row { flex-direction: column; gap: 2px; }
+    .result-row .label { min-width: 0; }
+    .summary-card { min-width: 100px; padding: 10px 12px; }
+    .summary-card .sc-num { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-icon">🔍</div>
+  <h1>RouMy <span>Debug Tool</span></h1>
+  <span class="header-ver">v2.0</span>
+</div>
+
+<div class="main">
+
+  <!-- ══ Summary ══ -->
+  <div class="summary-bar" id="summary-bar">
+    <div class="summary-card">
+      <div class="sc-num" id="sum-total" style="color:var(--blue)">—</div>
+      <div class="sc-label">データ変数</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num" id="sum-ok" style="color:var(--green)">—</div>
+      <div class="sc-label">正常</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num" id="sum-warn" style="color:var(--yellow)">—</div>
+      <div class="sc-label">警告</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num" id="sum-err" style="color:var(--red)">—</div>
+      <div class="sc-label">エラー</div>
+    </div>
+  </div>
+
+  <!-- ══ Section 1: データ変数チェック ══ -->
+  <div class="section open" id="sec-vars">
+    <div class="section-head" onclick="toggleSection('sec-vars')">
+      <div class="icon" style="background:var(--blue-bg);color:var(--blue)">📦</div>
+      <h2>データ変数の読み込み状況</h2>
+      <span class="badge badge-info" id="badge-vars">チェック中…</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        index.html の &lt;script&gt; で読み込まれた window 変数を検査します。<br>
+        <strong>使い方:</strong> RouMyのindex.htmlと同じディレクトリにこのファイルを配置し、
+        バスデータの &lt;script&gt; タグをこのファイルにもコピーするか、
+        下の「手動チェック」を押してください。
+      </p>
+      <button class="btn btn-accent" onclick="runVarCheck()">🔄 変数チェック実行</button>
+      <div id="var-results" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ Section 2: ファイルアップロード検証 ══ -->
+  <div class="section open" id="sec-upload">
+    <div class="section-head" onclick="toggleSection('sec-upload')">
+      <div class="icon" style="background:var(--purple-bg);color:var(--purple)">📂</div>
+      <h2>ファイルアップロード検証</h2>
+      <span class="badge badge-info" id="badge-upload">待機中</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        GTFSデータの .js ファイルをドロップまたは選択すると、変数名・フィールド名・データ品質を自動検査します。
+        複数ファイルを一度にチェック可能です。
+      </p>
+      <div class="upload-zone" id="upload-zone"
+           ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)" onclick="document.getElementById('file-input').click()">
+        <div class="uz-icon">📎</div>
+        <div class="uz-text">.js ファイルをドロップ、またはクリックして選択</div>
+        <div class="uz-hint">stops.js, stop_times.js, trips.js, routes.js, calendar.js など</div>
+      </div>
+      <input type="file" id="file-input" multiple accept=".js,.json" style="display:none" onchange="handleFiles(this.files)">
+      <div class="log-area" id="upload-log" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ══ Section 3: フィールド名異常検出 ══ -->
+  <div class="section" id="sec-fields">
+    <div class="section-head" onclick="toggleSection('sec-fields')">
+      <div class="icon" style="background:var(--orange-bg);color:var(--orange)">🏷</div>
+      <h2>フィールド名異常検出</h2>
+      <span class="badge badge-info" id="badge-fields">未実行</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        アップロードされたファイルまたは読み込み済みデータから、スペルミス・空白入りフィールド名・不正なstop_idを自動検出します。
+      </p>
+      <button class="btn btn-accent" onclick="runFieldCheck()">🔍 フィールド検査実行</button>
+      <div class="log-area" id="field-log" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ Section 4: データ接続テスト ══ -->
+  <div class="section" id="sec-connect">
+    <div class="section-head" onclick="toggleSection('sec-connect')">
+      <div class="icon" style="background:var(--green-bg);color:var(--green)">🔗</div>
+      <h2>データ接続テスト</h2>
+      <span class="badge badge-info" id="badge-connect">未実行</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        stop_times → trips → routes の紐付けチェーン、stop_id の参照整合性を検証します。
+      </p>
+      <button class="btn btn-accent" onclick="runConnectTest()">⚡ 接続テスト実行</button>
+      <div class="log-area" id="connect-log" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ Section 5: 修正チェックリスト ══ -->
+  <div class="section open" id="sec-checklist">
+    <div class="section-head" onclick="toggleSection('sec-checklist')">
+      <div class="icon" style="background:var(--yellow-bg);color:var(--yellow)">✅</div>
+      <h2>修正チェックリスト</h2>
+      <span class="badge badge-warn" id="badge-checklist">6項目</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body" id="checklist-body"></div>
+  </div>
+
+  <!-- ══ Section 6: 外部API接続 ══ -->
+  <div class="section" id="sec-api">
+    <div class="section-head" onclick="toggleSection('sec-api')">
+      <div class="icon" style="background:var(--accent-dim);color:var(--accent)">🌐</div>
+      <h2>外部API接続テスト</h2>
+      <span class="badge badge-info" id="badge-api">未実行</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        RouMyが使用する外部API（OpenStreetMap、OSRM、Nominatim、Overpass、Tesseract CDN）の疎通確認を行います。
+      </p>
+      <button class="btn btn-accent" onclick="runApiTest()">🌐 API接続テスト</button>
+      <div id="api-results" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  Toggle sections
+// ═══════════════════════════════════════════════════
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════
+//  Logging helpers
+// ═══════════════════════════════════════════════════
+function logTo(areaId, msg, cls='') {
+  const area = document.getElementById(areaId);
+  area.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (cls || '');
+  line.textContent = msg;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+}
+function clearLog(areaId) {
+  const area = document.getElementById(areaId);
+  area.innerHTML = '';
+  area.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 1: Variable Check
+// ═══════════════════════════════════════════════════
+const EXPECTED_VARS = [
+  { name: 'stops',              desc: '広電 バス停',       required: true },
+  { name: 'stop_times',         desc: '広電 時刻表',       required: true },
+  { name: 'trips',              desc: '広電 便情報',       required: true },
+  { name: 'routes',             desc: '広電 路線',         required: true },
+  { name: 'calendar',           desc: '広電 運行カレンダー', required: true },
+  { name: 'hirokou_stops',      desc: '広交 バス停',       required: true },
+  { name: 'hirokou_stop_times', desc: '広交 時刻表',       required: true },
+  { name: 'hirokou_trips',      desc: '広交 便情報',       required: true },
+  { name: 'hirokou_routes',     desc: '広交 路線',         required: true },
+  { name: 'hirokou_calendar',   desc: '広交 運行カレンダー', required: true },
+  { name: 'SPOTS_DATA',         desc: '観光スポット',       required: false },
+];
+
+// 既知の誤った変数名 → 正しい名前
+const WRONG_VAR_MAP = {
+  'hirokou_stops_times': 'hirokou_stop_times',
+  'calender':            'calendar (or hirokou_calendar)',
+};
+
+function runVarCheck() {
+  const container = document.getElementById('var-results');
+  container.innerHTML = '';
+  let okCount = 0, warnCount = 0, errCount = 0;
+
+  EXPECTED_VARS.forEach(v => {
+    const val = window[v.name];
+    const exists = val !== undefined && val !== null;
+    const isArr = Array.isArray(val);
+    const len = isArr ? val.length : 0;
+
+    let status, statusCls, detail;
+    if (exists && isArr && len > 0) {
+      status = '✓'; statusCls = 'status-ok'; detail = `${len.toLocaleString()} 件`;
+      okCount++;
+    } else if (exists && isArr && len === 0) {
+      status = '△'; statusCls = 'status-warn'; detail = '空配列（0件）— フォールバック or 読み込み失敗';
+      warnCount++;
+    } else if (exists && !isArr) {
+      status = '△'; statusCls = 'status-warn'; detail = `型: ${typeof val} — 配列が期待されます`;
+      warnCount++;
+    } else {
+      status = '✗'; statusCls = 'status-err'; detail = v.required ? '未定義 — scriptタグが欠落の可能性' : '未定義（任意）';
+      if (v.required) errCount++; else warnCount++;
+    }
+
+    container.innerHTML += `
+      <div class="result-row">
+        <div class="status ${statusCls}">${status}</div>
+        <div class="label">${v.desc}</div>
+        <div class="value">window.${v.name} → ${detail}</div>
+      </div>`;
+  });
+
+  // 誤った変数名の検出
+  Object.keys(WRONG_VAR_MAP).forEach(wrong => {
+    if (window[wrong] !== undefined) {
+      container.innerHTML += `
+        <div class="result-row">
+          <div class="status status-err">⚠</div>
+          <div class="label">誤った変数名</div>
+          <div class="value" style="color:var(--red)">
+            window.${wrong} が検出 → 正しくは window.${WRONG_VAR_MAP[wrong]}
+          </div>
+        </div>`;
+      errCount++;
+    }
+  });
+
+  const total = EXPECTED_VARS.length;
+  document.getElementById('sum-total').textContent = total;
+  document.getElementById('sum-ok').textContent = okCount;
+  document.getElementById('sum-warn').textContent = warnCount;
+  document.getElementById('sum-err').textContent = errCount;
+
+  const badge = document.getElementById('badge-vars');
+  if (errCount > 0) {
+    badge.textContent = `${errCount} エラー`;
+    badge.className = 'badge badge-err';
+  } else if (warnCount > 0) {
+    badge.textContent = `${warnCount} 警告`;
+    badge.className = 'badge badge-warn';
+  } else {
+    badge.textContent = '全て正常';
+    badge.className = 'badge badge-ok';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 2: File Upload Verification
+// ═══════════════════════════════════════════════════
+let uploadedData = {}; // filename → parsed content
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  if (!files || !files.length) return;
+  clearLog('upload-log');
+  const badge = document.getElementById('badge-upload');
+  badge.textContent = '検査中…';
+  badge.className = 'badge badge-info';
+  let totalIssues = 0;
+
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const content = e.target.result;
+      const fname = file.name;
+      const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+      logTo('upload-log', `━━ ${fname} (${sizeMB} MB) ━━`, 'log-info');
+
+      // 1. 変数名検出
+      const varMatch = content.match(/^(?:window\.|var\s+|let\s+|const\s+)([\w.]+)\s*=/m);
+      if (varMatch) {
+        const varName = varMatch[1].replace('window.', '');
+        logTo('upload-log', `  変数名: ${varName}`);
+
+        // 誤った変数名チェック
+        if (WRONG_VAR_MAP[varName]) {
+          logTo('upload-log', `  ⚠ 変数名エラー: "${varName}" → 正しくは "${WRONG_VAR_MAP[varName]}"`, 'log-err');
+          totalIssues++;
+        }
+
+        // ファイル名と変数名の整合性チェック
+        const expectedVarFromFile = fname.replace('.js', '').replace(/-/g, '_');
+        if (varName !== expectedVarFromFile && varName !== expectedVarFromFile.replace('_', '.')) {
+          logTo('upload-log', `  △ ファイル名 "${fname}" に対して変数名 "${varName}" — 不一致の可能性`, 'log-warn');
+          totalIssues++;
+        }
+      } else {
+        logTo('upload-log', `  △ 変数宣言が見つかりません`, 'log-warn');
+      }
+
+      // 2. データ構造サンプリング
+      const arrayMatch = content.match(/=\s*\[([\s\S]{0,5000})/);
+      if (arrayMatch) {
+        // フィールド名をサンプル取得
+        const fieldNames = new Set();
+        const fieldRegex = /["']?([\w\s]+?)["']?\s*:/g;
+        let match;
+        const sample = arrayMatch[1].substring(0, 3000);
+        while ((match = fieldRegex.exec(sample)) !== null) {
+          fieldNames.add(match[1]);
+        }
+
+        if (fieldNames.size > 0) {
+          logTo('upload-log', `  フィールド: ${[...fieldNames].join(', ')}`, 'log-dim');
+
+          // スペルミスチェック
+          const KNOWN_MISSPELLINGS = {
+            'seguence': 'sequence',
+            'calender': 'calendar',
+            'headsing': 'headsign',
+            'latiude': 'latitude',
+            'longtude': 'longitude',
+            'deparure': 'departure',
+            'arival': 'arrival',
+          };
+
+          // 空白入りフィールド名チェック
+          fieldNames.forEach(f => {
+            if (/\s/.test(f.trim()) && f.trim().length > 1) {
+              logTo('upload-log', `  ⚠ 空白入りフィールド名: "${f}" → アンダースコア推奨`, 'log-err');
+              totalIssues++;
+            }
+            const lower = f.trim().toLowerCase();
+            Object.keys(KNOWN_MISSPELLINGS).forEach(wrong => {
+              if (lower.includes(wrong)) {
+                logTo('upload-log', `  ⚠ スペルミス: "${f}" → "${KNOWN_MISSPELLINGS[wrong]}" が正しい`, 'log-err');
+                totalIssues++;
+              }
+            });
+          });
+        }
+      }
+
+      // 3. stop_id 異常チェック（サンプリング）
+      const stopIdRegex = /stop_id["']?\s*:\s*["']([^"']+)["']/g;
+      let stopMatch;
+      let badStopIds = [];
+      let checked = 0;
+      const textForIds = content.substring(0, 500000); // 最初500KB
+      while ((stopMatch = stopIdRegex.exec(textForIds)) !== null && checked < 2000) {
+        const sid = stopMatch[1];
+        if (/\s/.test(sid)) badStopIds.push({ id: sid, issue: 'スペース含む' });
+        if (/^-/.test(sid)) badStopIds.push({ id: sid, issue: 'マイナス付き' });
+        checked++;
+      }
+      if (badStopIds.length > 0) {
+        const unique = [...new Set(badStopIds.map(b => `"${b.id}" (${b.issue})`))].slice(0, 5);
+        logTo('upload-log', `  △ 不正 stop_id: ${badStopIds.length}件 — 例: ${unique.join(', ')}`, 'log-warn');
+        totalIssues++;
+      }
+
+      // 4. レコード数推定
+      const recordMatches = content.match(/\{[^{}]{10,}/g);
+      const estimatedRecords = recordMatches ? recordMatches.length : 0;
+      logTo('upload-log', `  推定レコード数: ${estimatedRecords.toLocaleString()} 件`, 'log-dim');
+      logTo('upload-log', '');
+
+      // バッジ更新
+      badge.textContent = totalIssues > 0 ? `${totalIssues} 問題` : '問題なし';
+      badge.className = totalIssues > 0 ? 'badge badge-warn' : 'badge badge-ok';
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 3: Field Anomaly Detection
+// ═══════════════════════════════════════════════════
+function runFieldCheck() {
+  clearLog('field-log');
+  const badge = document.getElementById('badge-fields');
+  let issues = 0;
+
+  const datasets = [
+    { name: '広電 stops',      data: window.stops },
+    { name: '広電 stop_times', data: window.stop_times },
+    { name: '広電 trips',      data: window.trips },
+    { name: '広電 routes',     data: window.routes },
+    { name: '広交 stops',      data: window.hirokou_stops },
+    { name: '広交 stop_times', data: window.hirokou_stop_times },
+    { name: '広交 trips',      data: window.hirokou_trips },
+    { name: '広交 routes',     data: window.hirokou_routes },
+  ];
+
+  // 正規フィールド名（GFS仕様）
+  const STANDARD_FIELDS = {
+    stops:      ['stop_id','stop_name','stop_lat','stop_lon','stop_code','stop_desc','zone_id','stop_url','location_type','parent_station'],
+    stop_times: ['trip_id','arrival_time','departure_time','stop_id','stop_sequence','stop_headsign','pickup_type','drop_off_type','shape_dist_traveled','timepoint'],
+    trips:      ['route_id','service_id','trip_id','trip_headsign','trip_short_name','direction_id','block_id','shape_id'],
+    routes:     ['route_id','agency_id','route_short_name','route_long_name','route_desc','route_type','route_url','route_color','route_text_color'],
+    calendar:   ['service_id','monday','tuesday','wednesday','thursday','friday','saturday','sunday','start_date','end_date'],
+  };
+
+  datasets.forEach(ds => {
+    logTo('field-log', `━━ ${ds.name} ━━`, 'log-info');
+
+    if (!ds.data || !Array.isArray(ds.data) || ds.data.length === 0) {
+      logTo('field-log', '  データなし or 未読み込み', 'log-warn');
+      issues++;
+      return;
+    }
+
+    // サンプル（先頭5件）からフィールド名取得
+    const sampleKeys = new Set();
+    ds.data.slice(0, 5).forEach(rec => {
+      Object.keys(rec).forEach(k => sampleKeys.add(k));
+    });
+
+    const keys = [...sampleKeys];
+    logTo('field-log', `  フィールド (${keys.length}個): ${keys.join(', ')}`, 'log-dim');
+
+    // 空白入りフィールド名チェック
+    keys.forEach(k => {
+      if (/\s/.test(k)) {
+        logTo('field-log', `  ⚠ 空白入りフィールド名: "${k}"`, 'log-err');
+        issues++;
+      }
+    });
+
+    // スペルミスチェック
+    const MISSPELL_MAP = {
+      'seguence':    'sequence',
+      'sequnce':     'sequence',
+      'calender':    'calendar',
+      'headsing':    'headsign',
+      'headsingn':   'headsign',
+      'depature':    'departure',
+      'deparure':    'departure',
+      'arival':      'arrival',
+      'arrivel':     'arrival',
+    };
+    keys.forEach(k => {
+      const lower = k.toLowerCase().replace(/_/g, '');
+      Object.keys(MISSPELL_MAP).forEach(wrong => {
+        if (lower.includes(wrong)) {
+          logTo('field-log', `  ⚠ スペルミス疑い: "${k}" — "${wrong}" → "${MISSPELL_MAP[wrong]}"`, 'log-err');
+          issues++;
+        }
+      });
+    });
+
+    // stop_id 品質チェック（最大500件サンプル）
+    if (keys.some(k => k.includes('stop_id'))) {
+      const stopIdKey = keys.find(k => k.includes('stop_id'));
+      let spaceCount = 0, minusCount = 0, emptyCount = 0;
+      const sampleSize = Math.min(ds.data.length, 500);
+      for (let i = 0; i < sampleSize; i++) {
+        const sid = String(ds.data[i][stopIdKey] || '');
+        if (/\s/.test(sid)) spaceCount++;
+        if (/^-/.test(sid)) minusCount++;
+        if (!sid.trim()) emptyCount++;
+      }
+      if (spaceCount > 0) {
+        logTo('field-log', `  △ stop_id にスペース含む: ${spaceCount}/${sampleSize}件`, 'log-warn');
+        issues++;
+      }
+      if (minusCount > 0) {
+        logTo('field-log', `  △ stop_id にマイナス: ${minusCount}/${sampleSize}件`, 'log-warn');
+        issues++;
+      }
+      if (emptyCount > 0) {
+        logTo('field-log', `  ⚠ stop_id 空欄: ${emptyCount}/${sampleSize}件`, 'log-err');
+        issues++;
+      }
+    }
+
+    logTo('field-log', '');
+  });
+
+  badge.textContent = issues > 0 ? `${issues} 問題` : '問題なし';
+  badge.className = issues > 0 ? 'badge badge-warn' : 'badge badge-ok';
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 4: Data Connection Test
+// ═══════════════════════════════════════════════════
+function runConnectTest() {
+  clearLog('connect-log');
+  const badge = document.getElementById('badge-connect');
+  let issues = 0;
+
+  function testProvider(label, stopsArr, stopTimesArr, tripsArr, routesArr) {
+    logTo('connect-log', `━━ ${label} ━━`, 'log-info');
+
+    if (!stopTimesArr || stopTimesArr.length === 0) {
+      logTo('connect-log', '  stop_times データなし — スキップ', 'log-err');
+      issues++;
+      return;
+    }
+    if (!tripsArr || tripsArr.length === 0) {
+      logTo('connect-log', '  trips データなし — スキップ', 'log-err');
+      issues++;
+      return;
+    }
+    if (!routesArr || routesArr.length === 0) {
+      logTo('connect-log', '  routes データなし — スキップ', 'log-err');
+      issues++;
+      return;
+    }
+
+    // GTFSフィールドヘルパー
+    function gf(obj, ...keys) {
+      for (const k of keys) {
+        if (obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
+        const u = k.toUpperCase();
+        if (obj[u] !== undefined && obj[u] !== null && String(obj[u]).trim() !== '') return String(obj[u]).trim();
+        // 空白入りキーも試す
+        const spaced = k.replace(/_/g, ' ');
+        if (obj[spaced] !== undefined && obj[spaced] !== null && String(obj[spaced]).trim() !== '') return String(obj[spaced]).trim();
+      }
+      return '';
+    }
+    function normId(id) { return String(id || '').replace(/\s+/g, '').replace(/^-+/, '').trim(); }
+
+    // trip_id 存在マップ
+    const tripIds = new Set(tripsArr.map(t => gf(t, 'trip_id')).filter(Boolean));
+    logTo('connect-log', `  trips 件数: ${tripIds.size}`, 'log-dim');
+
+    // route_id 存在マップ
+    const routeIds = new Set(routesArr.map(r => gf(r, 'route_id')).filter(Boolean));
+    logTo('connect-log', `  routes 件数: ${routeIds.size}`, 'log-dim');
+
+    // stop_id 存在マップ
+    const stopIds = new Set((stopsArr || []).map(s => normId(gf(s, 'stop_id'))).filter(Boolean));
+    logTo('connect-log', `  stops 件数: ${stopIds.size}`, 'log-dim');
+
+    // stop_times → trip_id 紐付けチェック
+    const sampleST = stopTimesArr.slice(0, 1000);
+    let orphanTrips = 0, orphanStops = 0, noSeq = 0;
+    sampleST.forEach(st => {
+      const tid = gf(st, 'trip_id');
+      if (tid && !tripIds.has(tid)) orphanTrips++;
+      const sid = normId(gf(st, 'stop_id'));
+      if (sid && !stopIds.has(sid)) orphanStops++;
+      const seq = gf(st, 'stop_sequence');
+      if (!seq) noSeq++;
+    });
+
+    if (orphanTrips > 0) {
+      logTo('connect-log', `  ⚠ stop_times → trips 紐付け失敗: ${orphanTrips}/${sampleST.length} 件`, 'log-err');
+      issues++;
+    } else {
+      logTo('connect-log', `  ✓ stop_times → trips 紐付け: OK (${sampleST.length}件サンプル)`, 'log-ok');
+    }
+
+    if (orphanStops > 0) {
+      logTo('connect-log', `  ⚠ stop_times → stops 紐付け失敗: ${orphanStops}/${sampleST.length} 件`, 'log-warn');
+      issues++;
+    } else {
+      logTo('connect-log', `  ✓ stop_times → stops 紐付け: OK`, 'log-ok');
+    }
+
+    if (noSeq > 0) {
+      logTo('connect-log', `  △ stop_sequence 欠損: ${noSeq}/${sampleST.length} 件`, 'log-warn');
+      issues++;
+    }
+
+    // trips → routes 紐付けチェック
+    const sampleTrips = tripsArr.slice(0, 500);
+    let orphanRoutes = 0;
+    sampleTrips.forEach(t => {
+      const rid = gf(t, 'route_id');
+      if (rid && !routeIds.has(rid)) orphanRoutes++;
+    });
+
+    if (orphanRoutes > 0) {
+      logTo('connect-log', `  ⚠ trips → routes 紐付け失敗: ${orphanRoutes}/${sampleTrips.length} 件`, 'log-err');
+      issues++;
+    } else {
+      logTo('connect-log', `  ✓ trips → routes 紐付け: OK (${sampleTrips.length}件サンプル)`, 'log-ok');
+    }
+
+    logTo('connect-log', '');
+  }
+
+  testProvider('広電 (KODEN)',
+    window.stops, window.stop_times, window.trips, window.routes);
+  testProvider('広交 (HIROKOU)',
+    window.hirokou_stops, window.hirokou_stop_times, window.hirokou_trips, window.hirokou_routes);
+
+  badge.textContent = issues > 0 ? `${issues} 問題` : '全接続OK';
+  badge.className = issues > 0 ? 'badge badge-err' : 'badge badge-ok';
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 5: Checklist
+// ═══════════════════════════════════════════════════
+const CHECKLIST = [
+  {
+    id: 'fix1',
+    title: '修正1: hirokou_stop_times.js の変数名',
+    desc: 'window.hirokou_stops_times → window.hirokou_stop_times に修正',
+    code: '// 変更前\nwindow.hirokou_stops_times = [\n\n// 変更後\nwindow.hirokou_stop_times = [',
+    check: () => {
+      const correct = Array.isArray(window.hirokou_stop_times) && window.hirokou_stop_times.length > 0;
+      const wrong = window.hirokou_stops_times !== undefined;
+      if (correct && !wrong) return 'done';
+      if (wrong) return 'pending';
+      return 'pending';
+    }
+  },
+  {
+    id: 'fix2',
+    title: '修正2: hirokou_trips.js の変数名',
+    desc: 'ファイル内容が trips データなのに window.hirokou_routes として宣言されている問題',
+    code: '// 変更前\nwindow.hirokou_routes = [{trip_id:...\n\n// 変更後\nwindow.hirokou_trips = [{trip_id:...',
+    check: () => {
+      const hasTrips = Array.isArray(window.hirokou_trips) && window.hirokou_trips.length > 0;
+      if (hasTrips) {
+        const sample = window.hirokou_trips[0];
+        if (sample && (sample.trip_id || sample.TRIP_ID)) return 'done';
+      }
+      return 'pending';
+    }
+  },
+  {
+    id: 'fix3',
+    title: '修正3: hirokou_calendar.js の変数名',
+    desc: 'window.calender → window.hirokou_calendar に修正',
+    code: '// 変更前\nwindow.calender = [\n\n// 変更後\nwindow.hirokou_calendar = [',
+    check: () => {
+      const correct = Array.isArray(window.hirokou_calendar) && window.hirokou_calendar.length > 0;
+      const wrong = window.calender !== undefined;
+      if (correct && !wrong) return 'done';
+      return 'pending';
+    }
+  },
+  {
+    id: 'fix4',
+    title: '修正4: index.html に calendar scriptタグ追加',
+    desc: 'calendar.js と hirokou_calendar.js の <script> タグが欠落',
+    code: '<script src="calendar.js"></script>\n<script src="hirokou_calendar.js"></script>\n\n// フォールバックにも追加:\nif (typeof calendar === \'undefined\') window.calendar = [];\nif (typeof hirokou_calendar === \'undefined\') window.hirokou_calendar = [];',
+    check: () => {
+      const cal = Array.isArray(window.calendar) && window.calendar.length > 0;
+      const hCal = Array.isArray(window.hirokou_calendar) && window.hirokou_calendar.length > 0;
+      if (cal || hCal) return 'done';
+      return 'pending';
+    }
+  },
+  {
+    id: 'fix5',
+    title: '修正5: normalizeStopId にマイナス除去追加',
+    desc: '広交の stop_id にマイナス符号（例: -328320）が付く問題への対応',
+    code: 'function normalizeStopId(id) {\n  return String(id || \'\')\n    .replace(/\\s+/g, \'\')   // スペース除去\n    .replace(/^-+/, \'\')    // マイナス除去（追加）\n    .trim();\n}',
+    check: () => {
+      // normalizeStopId が存在するか
+      if (typeof normalizeStopId === 'function') {
+        const test = normalizeStopId('-328320');
+        return test === '328320' ? 'done' : 'pending';
+      }
+      return 'pending';
+    }
+  },
+  {
+    id: 'fix6',
+    title: '修正6: stop_times.js フィールド名一括修正',
+    desc: '"stop headsign" → "stop_headsign", "stop seguence" → "stop_sequence" をNode.jsスクリプトで一括修正',
+    code: 'const fs = require(\'fs\');\nlet txt = fs.readFileSync(\'stop_times.js\', \'utf8\');\ntxt = txt.replace(/"stop headsign"\\s*:/g,  \'"stop_headsign":\');\ntxt = txt.replace(/"stop seguence"\\s*:/g,  \'"stop_sequence":\');\ntxt = txt.replace(/"stop sequence"\\s*:/g,  \'"stop_sequence":\');\nfs.writeFileSync(\'stop_times_fixed.js\', txt);',
+    check: () => {
+      if (!window.stop_times || window.stop_times.length === 0) return 'pending';
+      const sample = window.stop_times[0];
+      const hasSpace = Object.keys(sample).some(k => /\s/.test(k));
+      return hasSpace ? 'pending' : 'done';
+    }
+  },
+];
+
+function renderChecklist() {
+  const body = document.getElementById('checklist-body');
+  body.innerHTML = '';
+  let doneCount = 0;
+
+  CHECKLIST.forEach(item => {
+    let status;
+    try { status = item.check(); } catch(e) { status = 'pending'; }
+    if (status === 'done') doneCount++;
+
+    body.innerHTML += `
+      <div class="checklist-item">
+        <div class="cl-check ${status}">${status === 'done' ? '✓' : '○'}</div>
+        <div class="cl-body">
+          <div class="cl-title">${item.title}</div>
+          <div class="cl-desc">${item.desc}</div>
+          <div class="cl-code">${item.code}</div>
+        </div>
+      </div>`;
+  });
+
+  const badge = document.getElementById('badge-checklist');
+  badge.textContent = `${doneCount}/${CHECKLIST.length} 完了`;
+  badge.className = doneCount === CHECKLIST.length ? 'badge badge-ok' : 'badge badge-warn';
+}
+
+// ═══════════════════════════════════════════════════
+//  Section 6: External API Test
+// ═══════════════════════════════════════════════════
+async function runApiTest() {
+  const container = document.getElementById('api-results');
+  container.innerHTML = '';
+  const badge = document.getElementById('badge-api');
+  badge.textContent = 'テスト中…';
+  badge.className = 'badge badge-info';
+
+  const apis = [
+    {
+      name: 'OpenStreetMap Tiles',
+      url: 'https://tile.openstreetmap.org/16/57536/25856.png',
+      desc: '地図タイル配信',
+      checkType: 'image',
+    },
+    {
+      name: 'OSRM Routing',
+      url: 'https://router.project-osrm.org/route/v1/foot/132.459,34.396;132.461,34.398?overview=false',
+      desc: 'ルート検索API',
+      checkType: 'json',
+    },
+    {
+      name: 'Nominatim Geocoding',
+      url: 'https://nominatim.openstreetmap.org/search?format=json&q=hiroshima+station&limit=1',
+      desc: '住所→座標変換',
+      checkType: 'json',
+    },
+    {
+      name: 'Overpass API',
+      url: 'https://overpass-api.de/api/status',
+      desc: '道路データ取得',
+      checkType: 'text',
+    },
+    {
+      name: 'Tesseract.js CDN',
+      url: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+      desc: 'OCRエンジン',
+      checkType: 'script',
+    },
+    {
+      name: 'Leaflet CDN',
+      url: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
+      desc: '地図ライブラリ',
+      checkType: 'script',
+    },
+  ];
+
+  let okCount = 0, failCount = 0;
+
+  for (const api of apis) {
+    const startTime = performance.now();
+    try {
+      const res = await fetch(api.url, {
+        method: api.checkType === 'image' ? 'HEAD' : 'GET',
+        signal: AbortSignal.timeout(8000),
+      });
+      const elapsed = Math.round(performance.now() - startTime);
+
+      if (res.ok) {
+        container.innerHTML += `
+          <div class="result-row">
+            <div class="status status-ok">✓</div>
+            <div class="label">${api.name}</div>
+            <div class="value" style="color:var(--green)">OK — ${elapsed}ms — ${api.desc}</div>
+          </div>`;
+        okCount++;
+      } else {
+        container.innerHTML += `
+          <div class="result-row">
+            <div class="status status-warn">△</div>
+            <div class="label">${api.name}</div>
+            <div class="value" style="color:var(--yellow)">HTTP ${res.status} — ${elapsed}ms — ${api.desc}</div>
+          </div>`;
+        failCount++;
+      }
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - startTime);
+      container.innerHTML += `
+        <div class="result-row">
+          <div class="status status-err">✗</div>
+          <div class="label">${api.name}</div>
+          <div class="value" style="color:var(--red)">${err.message} — ${elapsed}ms — ${api.desc}</div>
+        </div>`;
+      failCount++;
+    }
+  }
+
+  badge.textContent = failCount > 0 ? `${failCount} 失敗` : '全てOK';
+  badge.className = failCount > 0 ? 'badge badge-err' : 'badge badge-ok';
+}
+
+// ═══════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  runVarCheck();
+  renderChecklist();
+});
+</script>
+</body>
+</html>
